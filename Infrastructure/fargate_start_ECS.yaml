@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Infrastructure needed for GitHub Self Hosted Runners
+Resources:
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Cpu: 256
+      ExecutionRoleArn: arn:aws:iam::293833807604:role/ecsTaskExecutionRole
+      Family: github-runner
+      Memory: 512
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      TaskRoleArn: arn:aws:iam::293833807604:role/ecsTaskExecutionRole
+      ContainerDefinitions:
+        - Image: 293833807604.dkr.ecr.us-east-1.amazonaws.com/runners-containers-registry:latest
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-create-group: true
+              awslogs-group: "/ecs/github-builders"
+              awslogs-region: us-east-1
+              awslogs-stream-prefix: "ecs"
+          Memory: 512
+          MemoryReservation: 512
+          Name: "github-builders"
+          PortMappings:
+            - ContainerPort: 8080
+  ECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster:  arn:aws:ecs:us-east-1:293833807604:cluster/cluster_ecs_github_runners
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 75
+      DesiredCount: 1
+      LaunchType: "FARGATE"
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets:  
+            - subnet-0209e775d54749a89
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - sg-0beff69c725a3856e
+      ServiceName: github-runner_new
+      TaskDefinition: !Ref TaskDefinition

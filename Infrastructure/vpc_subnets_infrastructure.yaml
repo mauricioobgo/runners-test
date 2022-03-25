@@ -1,0 +1,130 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Infrastructure needed for GitHub Self Hosted Runners
+Parameters:
+  SetupPrivateSubnets:
+    Type: String
+    Description: Indicate if both public and private subnets should be created
+    Default: "10.0.0.1"
+
+Conditions:
+  DeployPrivateSubnets: !Equals [!Ref SetupPrivateSubnets, true]
+Resources:
+  VPC:
+      Type: AWS::EC2::VPC
+      Properties:
+        EnableDnsSupport: true
+        EnableDnsHostnames: true
+        CidrBlock: 10.0.0.0/16
+        Tags:
+          - Key: Name
+            Value: github-runners
+
+  PublicSubnetOne:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: { Ref: "AWS::Region" }
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.0.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub github-runners-public-one
+
+  PublicSubnetTwo:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: { Ref: "AWS::Region" }
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: github-runners-public-two
+
+  PrivateSubnetOne:
+    Type: AWS::EC2::Subnet
+    Condition: DeployPrivateSubnets
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: { Ref: "AWS::Region" }
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub github-runners-private-one
+
+  PrivateSubnetTwo:
+    Type: AWS::EC2::Subnet
+    Condition: DeployPrivateSubnets
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: { Ref: "AWS::Region" }
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.3.0/24
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub github-runners-private-two
+
+  ##########################################################################
+  #  Gateways                                                              #
+  ##########################################################################
+  InternetGateway:
+      Type: AWS::EC2::InternetGateway
+      Properties:
+        Tags:
+          - Key: Name
+            Value: github-runners
+
+  GatewayAttachement:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  NatGatewayIpOne:
+    Type: AWS::EC2::EIP
+    Condition: DeployPrivateSubnets
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: github-runners-natgateway-one
+
+  NatGatewayOne:
+    Type: AWS::EC2::NatGateway
+    Condition: DeployPrivateSubnets
+    Properties:
+      AllocationId: !GetAtt NatGatewayIpOne.AllocationId
+      SubnetId: !Ref PublicSubnetOne
+
+  NatGatewayIpTwo:
+    Type: AWS::EC2::EIP
+    Condition: DeployPrivateSubnets
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: github-runners-natgateway-two
+
+  NatGatewayTwo:
+    Type: AWS::EC2::NatGateway
+    Condition: DeployPrivateSubnets
+    Properties:
+      AllocationId: !GetAtt NatGatewayIpTwo.AllocationId
+      SubnetId: !Ref PublicSubnetTwo
+      Tags:
+        - Key: Name
+          Value: github-runners-natgateway-two
