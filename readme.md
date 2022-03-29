@@ -3,4 +3,4 @@ This repo contains information in how to create a github runner using a AWS ECS 
 
 > * It relates the cloudformation files so it could be replicated
 > * The values and arn are not public so its need it to be replaced
-> * Also has a test of a gitapp that reviews pr this is a change
+> * Also has a test of a gitapp that reviews pr this is a changedf
