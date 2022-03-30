@@ -1,4 +1,4 @@
-#howdy
+#howdy Mau
 import sys
 import getopt
 import urllib.parse
